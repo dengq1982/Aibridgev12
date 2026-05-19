@@ -1624,7 +1624,7 @@ function AddRelationMappingModal({
   const [mappingType, setMappingType] = useState<'submitter' | 'custom'>('submitter');
   const [selectedForm, setSelectedForm] = useState('');
   const [relatedForm, setRelatedForm] = useState('');
-  const [matchField, setMatchField] = useState('提交人');
+  const [matchField, setMatchField] = useState('手机号');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadStep, setUploadStep] = useState<1 | 2>(1); // 1=上传文件, 2=预览确认
   // 默认模拟数据用于展示效果
@@ -1749,12 +1749,11 @@ function AddRelationMappingModal({
       return;
     }
 
-    if (!relatedForm) {
-      alert('请选择关联表单');
-      return;
-    }
-
     if (mappingType === 'submitter') {
+      if (!relatedForm) {
+        alert('请选择关联表单');
+        return;
+      }
       onSave({
         id: '',
         formName: selectedForm,
@@ -1771,7 +1770,6 @@ function AddRelationMappingModal({
         id: '',
         formName: selectedForm,
         mappingType: 'custom',
-        relatedForm,
         mappingFile: uploadedFile,
         mappingFileName: uploadedFile.name,
         mappingData: successData,
@@ -1826,29 +1824,6 @@ function AddRelationMappingModal({
             </p>
           </div>
 
-          {/* 选择关联表单 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              选择关联表单 <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={relatedForm}
-              onChange={(e) => setRelatedForm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              required
-            >
-              <option value="">请选择包含账号信息的表单</option>
-              {relatedForms.map((form) => (
-                <option key={form} value={form}>
-                  {form}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500 mt-1">
-              选择包含账号信息的表单（如员工名单、业务人员表等）
-            </p>
-          </div>
-
           {/* 选择映射方式 */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-3">
@@ -1866,7 +1841,7 @@ function AddRelationMappingModal({
                 />
                 <div>
                   <div className="font-medium text-slate-900">关联提交人</div>
-                  <p className="text-xs text-slate-600 mt-1">通过提交人字段关联账号信息</p>
+                  <p className="text-xs text-slate-600 mt-1">通过字段关联，适合关联内部邀约人场景</p>
                 </div>
               </label>
 
@@ -1884,7 +1859,7 @@ function AddRelationMappingModal({
                 />
                 <div>
                   <div className="font-medium text-slate-900">自定义关系</div>
-                  <p className="text-xs text-slate-600 mt-1">导入自定义映射配置</p>
+                  <p className="text-xs text-slate-600 mt-1">导入自定义映射配置，适合公开采集数据场景</p>
                 </div>
               </label>
             </div>
@@ -1893,6 +1868,28 @@ function AddRelationMappingModal({
           {/* 关联提交人配置 */}
           {mappingType === 'submitter' && (
             <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  选择关联表单 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={relatedForm}
+                  onChange={(e) => setRelatedForm(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                  required
+                >
+                  <option value="">请选择包含账号信息的表单</option>
+                  {relatedForms.map((form) => (
+                    <option key={form} value={form}>
+                      {form}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  选择包含账号信息的表单（如报价邀约表、员工信息表等）
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   匹配字段
@@ -1908,9 +1905,6 @@ function AddRelationMappingModal({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  默认使用"提交人"字段，可选择其他字段进行匹配
-                </p>
               </div>
 
               <div className="p-3 bg-white border border-green-200 rounded-lg">
@@ -1918,7 +1912,7 @@ function AddRelationMappingModal({
                   <AlertCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                   <div className="text-xs text-green-800">
                     <p className="font-medium mb-1">关联逻辑说明：</p>
-                    <p>系统可提取外部表单内提交人字段数据，以他的身份发起内部流程，相关通知邮件同步抄送其邮箱。</p>
+                    <p>系统可提取关联表单内手机号字段作为唯一ID，匹配多账号维护中的信息，以他的身份发起内部流程，相关通知邮件同步抄送其邮箱。</p>
                   </div>
                 </div>
               </div>
