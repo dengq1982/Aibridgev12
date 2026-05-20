@@ -8,6 +8,7 @@ interface InterfaceLog {
   id: string;
   failTime: string;
   supplierName: string;
+  phone: string;
   submitTime: string; // 新增提交时间
   oaFormId: string;
   errorCode: string;
@@ -91,6 +92,7 @@ export function AnalyticsDashboard() {
       id: 'log-1',
       failTime: '2026-03-14 14:23:15',
       supplierName: '华强电子有限公司',
+      phone: '13800138000',
       submitTime: '2026-03-14 14:23:15', // 新增提交时间
       oaFormId: 'OA_FORM_20260314_001',
       errorCode: '401',
@@ -102,6 +104,7 @@ export function AnalyticsDashboard() {
       id: 'log-2',
       failTime: '2026-03-14 13:45:22',
       supplierName: '鑫源机械制造',
+      phone: '13900139000',
       submitTime: '2026-03-14 13:45:22', // 新增提交时间
       oaFormId: 'OA_FORM_20260314_002',
       errorCode: '504',
@@ -113,6 +116,7 @@ export function AnalyticsDashboard() {
       id: 'log-3',
       failTime: '2026-03-14 12:18:33',
       supplierName: '宏达化工材料',
+      phone: '13700137000',
       submitTime: '2026-03-14 12:18:33', // 新增提交时间
       oaFormId: 'OA_FORM_20260314_003',
       errorCode: '422',
@@ -124,6 +128,7 @@ export function AnalyticsDashboard() {
       id: 'log-4',
       failTime: '2026-03-14 11:32:18',
       supplierName: '优质包装材料',
+      phone: '13600136000',
       submitTime: '2026-03-14 11:32:18', // 新增提交时间
       oaFormId: 'OA_FORM_20260314_004',
       errorCode: '500',
@@ -138,6 +143,7 @@ export function AnalyticsDashboard() {
     id: string;
     formName: string;
     userName: string;
+    phone: string;
     fillStatus: 'submitted' | 'modified';
     firstSubmitTime: string;
     lastModifyTime: string;
@@ -149,6 +155,7 @@ export function AnalyticsDashboard() {
       id: 'data-1',
       formName: '供应商入驻表',
       userName: '张三',
+      phone: '13800138001',
       fillStatus: 'submitted',
       firstSubmitTime: '2026-03-14 09:15:22',
       lastModifyTime: '2026-03-14 09:15:22',
@@ -158,6 +165,7 @@ export function AnalyticsDashboard() {
       id: 'data-2',
       formName: '供应商入驻表',
       userName: '李四',
+      phone: '13900139002',
       fillStatus: 'modified',
       firstSubmitTime: '2026-03-14 10:22:35',
       lastModifyTime: '2026-03-14 14:30:18',
@@ -167,6 +175,7 @@ export function AnalyticsDashboard() {
       id: 'data-3',
       formName: '供应商报价表',
       userName: '王五',
+      phone: '13700137003',
       fillStatus: 'submitted',
       firstSubmitTime: '2026-03-14 11:30:12',
       lastModifyTime: '2026-03-14 11:30:12',
@@ -176,6 +185,7 @@ export function AnalyticsDashboard() {
       id: 'data-4',
       formName: '供应商入驻表',
       userName: '赵六',
+      phone: '13600136004',
       fillStatus: 'submitted',
       firstSubmitTime: '2026-03-14 12:18:33',
       lastModifyTime: '2026-03-14 12:18:33',
@@ -185,6 +195,7 @@ export function AnalyticsDashboard() {
       id: 'data-5',
       formName: '资产盘点表',
       userName: '钱七',
+      phone: '13500135005',
       fillStatus: 'modified',
       firstSubmitTime: '2026-03-14 13:45:22',
       lastModifyTime: '2026-03-14 15:20:45',
@@ -194,6 +205,7 @@ export function AnalyticsDashboard() {
       id: 'data-6',
       formName: '供应商报价表',
       userName: '孙八',
+      phone: '13400134006',
       fillStatus: 'submitted',
       firstSubmitTime: '2026-03-14 14:23:15',
       lastModifyTime: '2026-03-14 14:23:15',
@@ -588,7 +600,8 @@ export function AnalyticsDashboard() {
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">表单名称</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">用户</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">提交人</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">提交人手机号</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">填写状态</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">首次提交时间</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">最后修改时间</th>
@@ -612,6 +625,7 @@ export function AnalyticsDashboard() {
                         <tr key={record.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm text-slate-900">{record.formName}</td>
                           <td className="px-4 py-3 text-sm text-slate-900">{record.userName}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600 font-mono">{record.phone}</td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               record.fillStatus === 'submitted'
@@ -810,6 +824,7 @@ export function AnalyticsDashboard() {
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">失败时间</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">提交人</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">提交人手机号</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">提交时间</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">OA表单ID</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 whitespace-nowrap">错误代码</th>
@@ -832,6 +847,7 @@ export function AnalyticsDashboard() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{log.failTime}</td>
                         <td className="px-4 py-3 text-sm text-slate-900 whitespace-nowrap">{log.supplierName}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 font-mono whitespace-nowrap">{log.phone}</td>
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{log.submitTime}</td>
                         <td className="px-4 py-3 text-sm text-slate-600 font-mono whitespace-nowrap">{log.oaFormId}</td>
                         <td className="px-4 py-3">
@@ -1202,7 +1218,7 @@ export function AnalyticsDashboard() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                导出 CSV
+                导出记录
               </button>
             </div>
 

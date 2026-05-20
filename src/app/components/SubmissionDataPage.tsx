@@ -4,6 +4,7 @@ import { Download, CheckCircle, Clock, AlertCircle, ArrowLeft } from 'lucide-rea
 interface SubmissionRecord {
   id: string;
   supplierName: string;
+  phone: string;
   status: 'not_visited' | 'visited' | 'submitted' | 'modified';
   firstSubmitTime: string;
   lastModifyTime: string;
@@ -25,6 +26,7 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
     {
       id: 'sub-1',
       supplierName: '华强电子有限公司',
+      phone: '13800138000',
       status: 'submitted',
       firstSubmitTime: '2026-03-14 09:15:22',
       lastModifyTime: '2026-03-14 09:15:22',
@@ -33,6 +35,7 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
     {
       id: 'sub-2',
       supplierName: '鑫源机械制造',
+      phone: '13900139000',
       status: 'modified',
       firstSubmitTime: '2026-03-14 10:22:35',
       lastModifyTime: '2026-03-14 14:18:42',
@@ -41,6 +44,7 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
     {
       id: 'sub-3',
       supplierName: '宏达化工材料',
+      phone: '13700137000',
       status: 'visited',
       firstSubmitTime: '-',
       lastModifyTime: '-',
@@ -49,6 +53,7 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
     {
       id: 'sub-4',
       supplierName: '优质包装材料',
+      phone: '13600136000',
       status: 'not_visited',
       firstSubmitTime: '-',
       lastModifyTime: '-',
@@ -152,7 +157,8 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">填写人</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">提交人</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">提交人手机号</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">提交状态</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">首次提交时间</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-700">最后修改时间</th>
@@ -169,6 +175,7 @@ export function SubmissionDataPage({ onBack }: { onBack: () => void }) {
                     return (
                       <tr key={record.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 text-sm text-slate-900">{record.supplierName}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 font-mono">{record.phone}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded-full ${statusInfo.color}`}>
                             {statusInfo.label}

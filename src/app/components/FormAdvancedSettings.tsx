@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, Trash2, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface TimeLimitGroup {
   id: string;
@@ -28,6 +28,9 @@ interface WhitelistSetting {
 }
 
 export function FormAdvancedSettings({ onClose, formName }: { onClose: () => void; formName: string }) {
+  // 模式设置
+  const [multiFormMode, setMultiFormMode] = useState(false); // 是否开启多流程表单限制
+
   // 时间设置
   const [timeSettingMode, setTimeSettingMode] = useState<'custom' | 'related'>('custom');
   const [startTime, setStartTime] = useState('');
@@ -46,8 +49,11 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
   const [autoFillPrevious, setAutoFillPrevious] = useState(false);
   const [timeLimits, setTimeLimits] = useState<TimeLimitGroup[]>([]);
   const [restrictUsers, setRestrictUsers] = useState(false);
+  const [listType, setListType] = useState<'whitelist' | 'blacklist'>('whitelist'); // 白名单或黑名单
   const [whitelistInput, setWhitelistInput] = useState('');
   const [whitelistMessage, setWhitelistMessage] = useState('您没有填写权限');
+  const [showWhitelistImport, setShowWhitelistImport] = useState(false);
+  const [selectedRelationRules, setSelectedRelationRules] = useState<string[]>([]); // 多表关系中选择的名单校验规则
   const [limitTotal, setLimitTotal] = useState(false);
   const [totalLimit, setTotalLimit] = useState('');
 
@@ -122,58 +128,72 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Header */}
-      <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">表单高级配置</h1>
-          <p className="text-sm text-slate-600">{formName}</p>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - 固定在顶部 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">表单高级配置</h1>
+            <p className="text-xs text-slate-600 mt-1">{formName}</p>
+            <p className="text-xs text-amber-600 mt-1">当前设置在保存后不会立即生效，表单发布后生效</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-        >
-          <X className="w-5 h-5 text-slate-500" />
-        </button>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-5xl mx-auto space-y-8">
+        {/* Content - 可滚动区域 */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-6">
+          {/* 模式切换 */}
+          <section className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-lg font-semibold text-slate-900">模式切换</h2>
+                  <button
+                    onClick={() => setMultiFormMode(!multiFormMode)}
+                    className={`relative w-14 h-7 rounded-full transition-colors ${
+                      multiFormMode ? 'bg-blue-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform ${
+                        multiFormMode ? 'translate-x-7' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-sm font-medium ${multiFormMode ? 'text-blue-600' : 'text-slate-500'}`}>
+                    {multiFormMode ? '已开启' : '已关闭'}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-700 font-medium mb-2">开启多流程表单限制</p>
+                {multiFormMode ? (
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    适用于在多表关系配置中关联了流程表单，生成多个外部表单批次，则以下配置规则控制到每个表单批次
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    适用于未在多表关系配置中关联流程表单，该表单模版按照统一规则限制
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
           {/* 1. 时间设置 */}
           <section className="bg-white border border-slate-200 rounded-xl p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-6">时间设置</h2>
 
             <div className="space-y-6">
-              {/* 时间设置方式选择 */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  时间设置方式
-                </label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={timeSettingMode === 'custom'}
-                      onChange={() => setTimeSettingMode('custom')}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm text-slate-700">自定义固定时间</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={timeSettingMode === 'related'}
-                      onChange={() => setTimeSettingMode('related')}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm text-slate-700">关联时间</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 自定义固定时间 */}
-              {timeSettingMode === 'custom' && (
+              {/* 关闭多流程表单限制时：只显示自定义固定时间 */}
+              {!multiFormMode && (
                 <>
                   {/* 开始/结束时间 */}
                   <div className="grid grid-cols-2 gap-4">
@@ -203,8 +223,8 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                 </>
               )}
 
-              {/* 关联时间 */}
-              {timeSettingMode === 'related' && (
+              {/* 开启多流程表单限制时：只显示关联时间 */}
+              {multiFormMode && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -239,7 +259,8 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                 </div>
               )}
 
-              {/* 收集周期 */}
+              {/* 收集周期 - 仅在关闭多流程表单限制时显示 */}
+              {!multiFormMode && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-3">
                   收集周期
@@ -399,6 +420,7 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                   </div>
                 </div>
               </div>
+              )}
 
               {/* 时间范围外提示语 */}
               <div>
@@ -509,7 +531,7 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <div className="font-medium text-slate-900">限制用户填写</div>
-                    <p className="text-sm text-slate-600 mt-1">开启后只有白名单内的用户可以填写</p>
+                    <p className="text-sm text-slate-600 mt-1">配置只有白名单用户可以填写或者限制黑名单用户不能填写</p>
                   </div>
                   <button
                     onClick={() => setRestrictUsers(!restrictUsers)}
@@ -524,11 +546,36 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                     />
                   </button>
                 </div>
-                {restrictUsers && (
+                {restrictUsers && !multiFormMode && (
                   <div className="space-y-3 pl-4 border-l-2 border-slate-200">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        白名单（手机号，以逗号隔开）
+                        名单类型
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            checked={listType === 'whitelist'}
+                            onChange={() => setListType('whitelist')}
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <span className="text-sm text-slate-700">白名单</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            checked={listType === 'blacklist'}
+                            onChange={() => setListType('blacklist')}
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <span className="text-sm text-slate-700">黑名单</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        名单输入（手机号，以逗号隔开）
                       </label>
                       <textarea
                         value={whitelistInput}
@@ -539,7 +586,11 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                       />
                     </div>
                     <div>
-                      <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setShowWhitelistImport(true)}
+                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm"
+                      >
                         <Upload className="w-4 h-4" />
                         导入Excel
                       </button>
@@ -554,6 +605,34 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                         onChange={(e) => setWhitelistMessage(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       />
+                    </div>
+                  </div>
+                )}
+                {restrictUsers && multiFormMode && (
+                  <div className="space-y-3 pl-4 border-l-2 border-slate-200">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        选择多表关系中的名单校验规则（支持多选）
+                      </label>
+                      <div className="space-y-2 bg-slate-50 rounded-lg p-3">
+                        {['供应商报价表-白名单校验', '资产盘点表-黑名单校验', '客户信息表-白名单校验'].map((rule) => (
+                          <label key={rule} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedRelationRules.includes(rule)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRelationRules([...selectedRelationRules, rule]);
+                                } else {
+                                  setSelectedRelationRules(selectedRelationRules.filter(r => r !== rule));
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded"
+                            />
+                            <span className="text-sm text-slate-700">{rule}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -659,9 +738,6 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
             <h2 className="text-lg font-semibold text-slate-900 mb-6">修改规则</h2>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                是否允许修改（可多选）
-              </label>
               <div className="space-y-3">
                 <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
                   <input
@@ -677,41 +753,334 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
                     </p>
                   </div>
                 </label>
-
-                <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={editRules.includes('afterSync')}
-                    onChange={() => toggleEditRule('afterSync')}
-                    className="mt-0.5 w-4 h-4 text-blue-600 rounded"
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-slate-900">同步后允许修改</div>
-                    <p className="text-sm text-slate-600 mt-1">
-                      数据同步到内部系统后，用户仍可以修改表单内容，生成多条提交记录
-                    </p>
-                  </div>
-                </label>
               </div>
             </div>
           </section>
+          </div>
+        </div>
 
-          {/* 底部操作按钮 */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        {/* Footer - 固定在底部 */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 flex-shrink-0 bg-white">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            保存配置
+          </button>
+        </div>
+      </div>
+
+      {/* 白名单导入模态框 */}
+      {showWhitelistImport && (
+        <ImportWhitelistModal
+          onClose={() => setShowWhitelistImport(false)}
+          onSave={(phones) => {
+            const currentPhones = whitelistInput ? whitelistInput.split(',').map(p => p.trim()).filter(Boolean) : [];
+            const newPhones = [...new Set([...currentPhones, ...phones])];
+            setWhitelistInput(newPhones.join(','));
+            setShowWhitelistImport(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Import Whitelist Modal Component - 导入白名单模态框
+function ImportWhitelistModal({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (phones: string[]) => void;
+}) {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadStep, setUploadStep] = useState<1 | 2>(1); // 1=上传文件, 2=预览确认
+  const [successData, setSuccessData] = useState<string[]>([]);
+  const [failedData, setFailedData] = useState<Array<{
+    row: number;
+    data: string;
+    reason: string;
+  }>>([]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // 验证文件类型
+      const validTypes = ['.xlsx', '.xls', '.csv'];
+      const fileExt = file.name.substring(file.name.lastIndexOf('.'));
+      if (!validTypes.includes(fileExt)) {
+        alert('请上传Excel或CSV文件');
+        return;
+      }
+      setUploadedFile(file);
+
+      // 解析文件并预览
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (!text) return;
+
+        const lines = text.split('\n').filter(line => line.trim());
+        const dataLines = lines.slice(1); // 跳过表头
+
+        const success: string[] = [];
+        const failed: typeof failedData = [];
+
+        dataLines.forEach((line, index) => {
+          const phone = line.split(',')[0]?.trim();
+
+          // 验证手机号格式
+          if (!phone) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '手机号为空'
+            });
+          } else if (!/^1[3-9]\d{9}$/.test(phone)) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '手机号格式不正确'
+            });
+          } else if (success.includes(phone)) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '手机号重复'
+            });
+          } else {
+            success.push(phone);
+          }
+        });
+
+        setSuccessData(success);
+        setFailedData(failed);
+        setUploadStep(2); // 进入预览步骤
+      };
+
+      reader.readAsText(file);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    // 下载白名单导入模板
+    const csvContent = '手机号\n13800138000\n13900139000\n13700137000\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '白名单导入模板.csv';
+    link.click();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (successData.length === 0) {
+      alert('没有可导入的有效数据');
+      return;
+    }
+
+    onSave(successData);
+    alert(`成功导入 ${successData.length} 个手机号`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - 固定在顶部 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">导入白名单</h3>
+            <p className="text-xs text-slate-600 mt-1">通过Excel或CSV文件批量导入手机号白名单</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
+        {/* Form Content - 可滚动区域 */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* 步骤指示器 */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 1 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">1. 导入文件</span>
+              </div>
+              <div className="flex-1 h-0.5 bg-slate-200"></div>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 2 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">2. 数据预览</span>
+              </div>
+              <div className="flex-1 h-0.5 bg-slate-200"></div>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 2 && successData.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">3. 确认</span>
+              </div>
+            </div>
+
+            {/* 步骤1: 上传文件 */}
+            {uploadStep === 1 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    上传白名单文件 <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    下载模版
+                  </button>
+                </div>
+
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    type="file"
+                    id="whitelist-import-file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="whitelist-import-file"
+                    className="cursor-pointer flex flex-col items-center gap-2"
+                  >
+                    <Upload className="w-10 h-10 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">点击上传文件</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        支持 .xlsx、.xls、.csv 格式
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-blue-800">
+                      <p className="font-medium mb-1">模版格式说明：</p>
+                      <p>模版包含一列：<strong>手机号</strong></p>
+                      <p className="mt-1">示例：</p>
+                      <code className="text-xs bg-white px-1 py-0.5 rounded block mt-1">13800138000</code>
+                      <p className="mt-1">每行一个手机号，系统会自动去重</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 步骤2: 数据预览 */}
+            {uploadStep === 2 && (
+              <div className="space-y-4">
+                {/* 成功数据预览 */}
+                {successData.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <h4 className="text-sm font-medium text-slate-900">成功数据预览 ({successData.length} 条)</h4>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">序号</th>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">手机号</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {successData.map((phone, index) => (
+                            <tr key={index} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 text-slate-600">{index + 1}</td>
+                              <td className="px-3 py-2 text-slate-900 font-mono">{phone}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 失败数据及原因 */}
+                {failedData.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <h4 className="text-sm font-medium text-slate-900">失败数据 ({failedData.length} 条)</h4>
+                    </div>
+                    <div className="border border-red-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto bg-red-50">
+                      <table className="w-full text-xs">
+                        <thead className="bg-red-100 border-b border-red-200 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">行号</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">数据</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">失败原因</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-200">
+                          {failedData.map((item, index) => (
+                            <tr key={index} className="hover:bg-red-100">
+                              <td className="px-3 py-2 text-red-900">{item.row}</td>
+                              <td className="px-3 py-2 text-red-700 font-mono text-xs">{item.data}</td>
+                              <td className="px-3 py-2 text-red-600">{item.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 重新上传按钮 */}
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedFile(null);
+                      setSuccessData([]);
+                      setFailedData([]);
+                      setUploadStep(1);
+                    }}
+                    className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    重新上传
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - 固定在底部 */}
+          <div className="flex gap-3 px-6 py-4 border-t border-slate-200 flex-shrink-0 bg-white">
             <button
+              type="button"
               onClick={onClose}
-              className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
             >
               取消
             </button>
             <button
-              onClick={onClose}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              type="submit"
+              disabled={uploadStep === 1 || successData.length === 0}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              保存配置
+              确认导入
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

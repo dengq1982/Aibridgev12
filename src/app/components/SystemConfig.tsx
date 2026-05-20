@@ -2113,6 +2113,13 @@ function BatchImportAccountsModal({
   onSave: (accounts: MultiAccount[]) => void;
 }) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadStep, setUploadStep] = useState<1 | 2>(1); // 1=上传文件, 2=预览确认
+  const [successData, setSuccessData] = useState<MultiAccount[]>([]);
+  const [failedData, setFailedData] = useState<Array<{
+    row: number;
+    data: string;
+    reason: string;
+  }>>([]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2125,6 +2132,58 @@ function BatchImportAccountsModal({
         return;
       }
       setUploadedFile(file);
+
+      // 解析文件并预览
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (!text) return;
+
+        const lines = text.split('\n').filter(line => line.trim());
+        const dataLines = lines.slice(1); // 跳过表头
+
+        const success: MultiAccount[] = [];
+        const failed: typeof failedData = [];
+
+        dataLines.forEach((line, index) => {
+          const [internalUserName, phone, oaLoginAccount, emailAddress] = line.split(',').map(item => item.trim());
+
+          // 验证数据
+          if (!internalUserName || !phone || !oaLoginAccount || !emailAddress) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '数据不完整，缺少必填字段'
+            });
+          } else if (!/^1[3-9]\d{9}$/.test(phone)) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '手机号格式不正确'
+            });
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+            failed.push({
+              row: index + 2,
+              data: line,
+              reason: '邮箱地址格式不正确'
+            });
+          } else {
+            success.push({
+              id: `acc-${Date.now()}-${index}`,
+              internalUserName,
+              phone,
+              oaLoginAccount,
+              emailAddress,
+            });
+          }
+        });
+
+        setSuccessData(success);
+        setFailedData(failed);
+        setUploadStep(2); // 进入预览步骤
+      };
+
+      reader.readAsText(file);
     }
   };
 
@@ -2140,50 +2199,23 @@ function BatchImportAccountsModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadedFile) {
-      alert('请上传账号文件');
+    if (successData.length === 0) {
+      alert('没有可导入的有效数据');
       return;
     }
 
-    // 模拟解析CSV文件
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n').filter(line => line.trim());
-
-      // 跳过表头
-      const dataLines = lines.slice(1);
-
-      const accounts: MultiAccount[] = dataLines.map((line, index) => {
-        const [internalUserName, phone, oaLoginAccount, emailAddress] = line.split(',').map(item => item.trim());
-        return {
-          id: `acc-${Date.now()}-${index}`,
-          internalUserName,
-          phone,
-          oaLoginAccount,
-          emailAddress,
-        };
-      }).filter(acc => acc.internalUserName && acc.phone && acc.oaLoginAccount && acc.emailAddress);
-
-      if (accounts.length === 0) {
-        alert('未能解析到有效的账号数据，请检查文件格式');
-        return;
-      }
-
-      onSave(accounts);
-      alert(`成功导入 ${accounts.length} 个账号`);
-    };
-
-    reader.readAsText(uploadedFile);
+    onSave(successData);
+    alert(`成功导入 ${successData.length} 个账号`);
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-2xl"
+        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        {/* Header - 固定在顶部 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">批量导入账号</h3>
             <p className="text-xs text-slate-600 mt-1">通过Excel或CSV文件批量导入多个账号</p>
@@ -2196,82 +2228,164 @@ function BatchImportAccountsModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-green-800">
-                <p className="font-medium mb-1">批量导入说明</p>
-                <ul className="text-xs space-y-1 ml-4 list-disc">
-                  <li>下载模板文件，按照格式填写账号信息</li>
-                  <li>支持一次导入多个账号</li>
-                  <li>导入时将自动去重（基于协同登录账号）</li>
-                  <li>导入后可在列表中查看和编辑</li>
-                </ul>
+        {/* Form Content - 可滚动区域 */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* 步骤指示器 */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">1. 导入文件</span>
+              </div>
+              <div className="flex-1 h-0.5 bg-slate-200"></div>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 2 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">2. 数据预览</span>
+              </div>
+              <div className="flex-1 h-0.5 bg-slate-200"></div>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded ${uploadStep >= 2 && successData.length > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className="text-xs font-medium">3. 确认</span>
               </div>
             </div>
-          </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700">
-                上传账号文件 <span className="text-red-500">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1"
-              >
-                <Download className="w-3 h-3" />
-                下载模版
-              </button>
-            </div>
+            {/* 步骤1: 上传文件 */}
+            {uploadStep === 1 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    上传账号文件 <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    下载模版
+                  </button>
+                </div>
 
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
-              <input
-                type="file"
-                id="batch-import-file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <label
-                htmlFor="batch-import-file"
-                className="cursor-pointer flex flex-col items-center gap-2"
-              >
-                <FileUp className="w-10 h-10 text-slate-400" />
-                {uploadedFile ? (
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{uploadedFile.name}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {(uploadedFile.size / 1024).toFixed(2)} KB
-                    </p>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
+                  <input
+                    type="file"
+                    id="batch-import-file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="batch-import-file"
+                    className="cursor-pointer flex flex-col items-center gap-2"
+                  >
+                    <Upload className="w-10 h-10 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">点击上传文件</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        支持 .xlsx、.xls、.csv 格式
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-blue-800">
+                      <p className="font-medium mb-1">模版格式说明：</p>
+                      <p>模版包含四列：<strong>内部人员名称</strong>、<strong>手机号</strong>、<strong>协同登录账号</strong>、<strong>邮箱地址</strong></p>
+                      <p className="mt-1">示例：</p>
+                      <code className="text-xs bg-white px-1 py-0.5 rounded block mt-1">张伟, 13800138000, zhangwei, zhangwei@company.com</code>
+                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">点击上传文件</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      支持 .xlsx、.xls、.csv 格式
-                    </p>
-                  </div>
-                )}
-              </label>
-            </div>
-
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-blue-800">
-                  <p className="font-medium mb-1">模版格式说明：</p>
-                  <p>模版包含四列：<strong>内部人员名称</strong>、<strong>手机号</strong>、<strong>协同登录账号</strong>、<strong>邮箱地址</strong></p>
-                  <p className="mt-1">示例行：</p>
-                  <code className="text-xs bg-white px-1 py-0.5 rounded">张伟, 13800138000, zhangwei, zhangwei@company.com</code>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* 步骤2: 数据预览 */}
+            {uploadStep === 2 && (
+              <div className="space-y-4">
+                {/* 成功数据预览 */}
+                {successData.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <h4 className="text-sm font-medium text-slate-900">成功数据预览 ({successData.length} 条)</h4>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">内部人员名称</th>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">手机号</th>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">协同登录账号</th>
+                            <th className="px-3 py-2 text-left font-medium text-slate-700">邮箱地址</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {successData.map((item, index) => (
+                            <tr key={index} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 text-slate-900">{item.internalUserName}</td>
+                              <td className="px-3 py-2 text-slate-600 font-mono">{item.phone}</td>
+                              <td className="px-3 py-2 text-slate-600">{item.oaLoginAccount}</td>
+                              <td className="px-3 py-2 text-slate-600">{item.emailAddress}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 失败数据及原因 */}
+                {failedData.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <h4 className="text-sm font-medium text-slate-900">失败数据 ({failedData.length} 条)</h4>
+                    </div>
+                    <div className="border border-red-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto bg-red-50">
+                      <table className="w-full text-xs">
+                        <thead className="bg-red-100 border-b border-red-200 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">行号</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">数据</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-900">失败原因</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-200">
+                          {failedData.map((item, index) => (
+                            <tr key={index} className="hover:bg-red-100">
+                              <td className="px-3 py-2 text-red-900">{item.row}</td>
+                              <td className="px-3 py-2 text-red-700 font-mono text-xs">{item.data}</td>
+                              <td className="px-3 py-2 text-red-600">{item.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 重新上传按钮 */}
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedFile(null);
+                      setSuccessData([]);
+                      setFailedData([]);
+                      setUploadStep(1);
+                    }}
+                    className="px-4 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    重新上传
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
+          {/* Footer - 固定在底部 */}
+          <div className="flex gap-3 px-6 py-4 border-t border-slate-200 flex-shrink-0 bg-white">
             <button
               type="button"
               onClick={onClose}
@@ -2281,9 +2395,10 @@ function BatchImportAccountsModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              disabled={uploadStep === 1 || successData.length === 0}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              开始导入
+              确认导入
             </button>
           </div>
         </form>

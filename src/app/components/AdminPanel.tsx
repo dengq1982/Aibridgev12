@@ -60,7 +60,7 @@ export function AdminPanel({ onBack, onNavigateToTenant }: AdminPanelProps) {
       name: '超级管理员',
       tenants: ['all'],
       apps: ['all'],
-      permissions: ['app_create', 'app_manage', 'app_view', 'billing_view', 'billing_recharge'],
+      permissions: ['app_create', 'app_manage', 'app_view', 'sms_config', 'billing_view', 'billing_recharge'],
       description: '拥有所有租户、所有应用的所有权限',
     },
     {
@@ -76,8 +76,8 @@ export function AdminPanel({ onBack, onNavigateToTenant }: AdminPanelProps) {
       name: '企业管理员',
       tenants: [],
       apps: [],
-      permissions: ['app_manage', 'app_view'],
-      description: '可以管理和查看授权应用',
+      permissions: ['app_manage', 'app_view', 'submission_data_view'],
+      description: '可以管理和查看授权应用，查看提交数据',
     },
   ]);
 
@@ -86,6 +86,7 @@ export function AdminPanel({ onBack, onNavigateToTenant }: AdminPanelProps) {
     { id: 'app_manage', label: '应用管理', desc: '应用下连接-表单-通知-数据四个tab的修改权限' },
     { id: 'app_view', label: '应用查看', desc: '应用下连接-表单-通知-数据四个tab内容只能查看不能修改' },
     { id: 'submission_data_view', label: '提交数据查看', desc: '查看填报的提交数据' },
+    { id: 'sms_config', label: '短信配置', desc: '配置和管理短信服务提供商及相关参数' },
     { id: 'billing_view', label: '账单查看', desc: '查看租户下的账单及明细，不能充值' },
     { id: 'billing_recharge', label: '积分充值', desc: '租户下的积分充值权限' },
   ];

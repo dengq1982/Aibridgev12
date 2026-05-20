@@ -60,6 +60,7 @@ const getSystemVariables = (isEmailTemplate: boolean) => {
     { key: '{{截止时间}}', description: '表单填写截止时间', needsSelection: false },
     { key: '{{表单填写链接}}', description: '表单填写页面链接', needsSelection: true, type: 'form_fill_link' as const },
     { key: '{{我填写的表单链接}}', description: '我填写的表单列表链接', needsSelection: true, type: 'my_form_link' as const },
+    { key: '{{自定义链接}}', description: '自定义H5或小程序链接', needsSelection: true, type: 'custom_link' as const },
   ];
 
   // 如果是邮件模板，增加二维码变量
@@ -481,7 +482,7 @@ function NotificationRuleModal({
     });
   };
 
-  const handleLinkVariableClick = (type: 'form_fill_link' | 'my_form_link' | 'form_fill_qr' | 'my_form_qr', channel: 'sms' | 'email') => {
+  const handleLinkVariableClick = (type: 'form_fill_link' | 'my_form_link' | 'form_fill_qr' | 'my_form_qr' | 'custom_link', channel: 'sms' | 'email') => {
     setLinkModalConfig({ type, channel });
     setShowLinkModal(true);
   };
@@ -603,8 +604,16 @@ function NotificationRuleModal({
                   required
                 >
                   <option value="">选择表单</option>
-                  <option value="供应商入驻表单">供应商入驻表单</option>
-                  <option value="供应商报价表单">供应商报价表单</option>
+                  <optgroup label="外部表单">
+                    <option value="供应商入驻表单">供应商入驻表单</option>
+                    <option value="供应商报价表单">供应商报价表单</option>
+                    <option value="资产盘点表单">资产盘点表单</option>
+                  </optgroup>
+                  <optgroup label="协同映射表单">
+                    <option value="采购申请单">采购申请单</option>
+                    <option value="合同审批单">合同审批单</option>
+                    <option value="报销单">报销单</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -779,7 +788,7 @@ function NotificationRuleModal({
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  {formData.channels.email && !formData.channels.sms ? '最多支持20个邮箱，用逗号分隔' : '最多支持20个手机号，用逗号分隔'}
+                  {formData.channels.email && !formData.channels.sms ? '最多支持200个邮箱，用逗号分隔' : '最多支持200个手机号，用逗号分隔'}
                 </p>
               </div>
             )}
@@ -1105,12 +1114,17 @@ function LinkSelectionModal({
   onClose,
   onConfirm,
 }: {
-  type: 'form_fill_link' | 'my_form_link' | 'form_fill_qr' | 'my_form_qr';
+  type: 'form_fill_link' | 'my_form_link' | 'form_fill_qr' | 'my_form_qr' | 'custom_link';
   onClose: () => void;
   onConfirm: (formName: string, linkType: 'h5' | 'miniprogram' | 'h5tomp') => void;
 }) {
   const [selectedForm, setSelectedForm] = useState('');
+  const [selectedLinkOption, setSelectedLinkOption] = useState(''); // 链接选项（表单列表、表单链接1等）
   const [selectedLinkType, setSelectedLinkType] = useState<'h5' | 'miniprogram' | 'h5tomp'>('h5');
+  const [customH5Link, setCustomH5Link] = useState('');
+  const [customMpOriginalId, setCustomMpOriginalId] = useState('');
+  const [customMpAppId, setCustomMpAppId] = useState('');
+  const [customMpPath, setCustomMpPath] = useState('');
 
   const formList = ['供应商入驻表单', '供应商报价表单', '资产盘点表单'];
 
@@ -1119,15 +1133,33 @@ function LinkSelectionModal({
     if (type === 'my_form_link') return '选择我填写的表单链接';
     if (type === 'form_fill_qr') return '选择表单填写二维码';
     if (type === 'my_form_qr') return '选择我填写的表单二维码';
+    if (type === 'custom_link') return '配置自定义链接';
     return '选择链接配置';
   };
 
   const handleConfirm = () => {
-    if (!selectedForm) {
-      alert('请选择表单');
-      return;
+    if (type === 'custom_link') {
+      if (selectedLinkType === 'h5' && !customH5Link) {
+        alert('请输入H5链接地址');
+        return;
+      }
+      if (selectedLinkType === 'miniprogram' && (!customMpOriginalId || !customMpAppId || !customMpPath)) {
+        alert('请完整填写小程序信息');
+        return;
+      }
+      // 对于自定义链接，使用特殊格式
+      onConfirm('custom', selectedLinkType);
+    } else {
+      if (!selectedForm) {
+        alert('请选择表单');
+        return;
+      }
+      if (!selectedLinkOption) {
+        alert('请选择链接');
+        return;
+      }
+      onConfirm(selectedForm, selectedLinkType);
     }
-    onConfirm(selectedForm, selectedLinkType);
   };
 
   return (
@@ -1147,24 +1179,48 @@ function LinkSelectionModal({
         </div>
 
         <div className="p-6 space-y-4">
-          {/* 选择表单 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              选择表单 <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={selectedForm}
-              onChange={(e) => setSelectedForm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">请选择表单</option>
-              {formList.map((form) => (
-                <option key={form} value={form}>
-                  {form}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* 非自定义链接：选择表单 */}
+          {type !== 'custom_link' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  选择表单 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedForm}
+                  onChange={(e) => setSelectedForm(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">请选择表单</option>
+                  {formList.map((form) => (
+                    <option key={form} value={form}>
+                      {form}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 选择链接 */}
+              {selectedForm && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    选择链接 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedLinkOption}
+                    onChange={(e) => setSelectedLinkOption(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">请选择链接</option>
+                    <option value="list">表单列表</option>
+                    <option value="link1">{selectedForm}链接1</option>
+                    <option value="link2">{selectedForm}链接2</option>
+                    <option value="link3">{selectedForm}链接3</option>
+                  </select>
+                </div>
+              )}
+            </>
+          )}
 
           {/* 选择链接类型 */}
           <div>
@@ -1200,22 +1256,87 @@ function LinkSelectionModal({
                   <div className="text-xs text-slate-500">适用于微信体系内发布</div>
                 </div>
               </label>
-              <label className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="linkType"
-                  value="h5tomp"
-                  checked={selectedLinkType === 'h5tomp'}
-                  onChange={(e) => setSelectedLinkType('h5tomp')}
-                  className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
-                />
-                <div>
-                  <div className="text-sm font-medium text-slate-900">H5跳转小程序</div>
-                  <div className="text-xs text-slate-500">适用于手机端短信/浏览器等场景</div>
-                </div>
-              </label>
+              {/* 非自定义链接时显示H5跳转小程序选项 */}
+              {type !== 'custom_link' && (
+                <label className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                  <input
+                    type="radio"
+                    name="linkType"
+                    value="h5tomp"
+                    checked={selectedLinkType === 'h5tomp'}
+                    onChange={(e) => setSelectedLinkType('h5tomp')}
+                    className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">H5跳转小程序</div>
+                    <div className="text-xs text-slate-500">适用于手机端短信/浏览器等场景</div>
+                  </div>
+                </label>
+              )}
             </div>
           </div>
+
+          {/* 自定义链接输入 */}
+          {type === 'custom_link' && (
+            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              {selectedLinkType === 'h5' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    H5链接地址 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={customH5Link}
+                    onChange={(e) => setCustomH5Link(e.target.value)}
+                    placeholder="https://example.com/your-page"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">请输入完整的HTTP或HTTPS链接</p>
+                </div>
+              )}
+              {selectedLinkType === 'miniprogram' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      小程序原始ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customMpOriginalId}
+                      onChange={(e) => setCustomMpOriginalId(e.target.value)}
+                      placeholder="gh_xxxxxxxxxxxx"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      小程序APPID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customMpAppId}
+                      onChange={(e) => setCustomMpAppId(e.target.value)}
+                      placeholder="wx1234567890abcdef"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      小程序路径 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customMpPath}
+                      onChange={(e) => setCustomMpPath(e.target.value)}
+                      placeholder="pages/index/index"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">请在小程序管理后台获取相关信息</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
