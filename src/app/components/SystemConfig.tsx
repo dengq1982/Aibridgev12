@@ -237,6 +237,7 @@ export function SystemConfig() {
   const [showBatchImportModal, setShowBatchImportModal] = useState(false);
   const [showAddMappingModal, setShowAddMappingModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<MultiAccount | null>(null);
+  const [editingMapping, setEditingMapping] = useState<AccountRelationMapping | null>(null);
   const [showMappingDetailModal, setShowMappingDetailModal] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<AccountRelationMapping | null>(null);
 
@@ -1185,7 +1186,10 @@ export function SystemConfig() {
                   <p className="text-xs text-slate-600 mt-1">配置不同表单与不同业务人员的对应关系</p>
                 </div>
                 <button
-                  onClick={() => setShowAddMappingModal(true)}
+                  onClick={() => {
+                    setEditingMapping(null);
+                    setShowAddMappingModal(true);
+                  }}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -1238,6 +1242,16 @@ export function SystemConfig() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingMapping(mapping);
+                            setShowAddMappingModal(true);
+                          }}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                          title="编辑配置"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => {
                             if (confirm(`确定要删除"${mapping.formName}"的关系配置吗？`)) {
@@ -1301,10 +1315,19 @@ export function SystemConfig() {
       {/* Add Relation Mapping Modal */}
       {showAddMappingModal && (
         <AddRelationMappingModal
-          onClose={() => setShowAddMappingModal(false)}
-          onSave={(mapping) => {
-            setRelationMappings([...relationMappings, { ...mapping, id: `rel-${Date.now()}` }]);
+          mapping={editingMapping}
+          onClose={() => {
             setShowAddMappingModal(false);
+            setEditingMapping(null);
+          }}
+          onSave={(mapping) => {
+            if (editingMapping) {
+              setRelationMappings(relationMappings.map(m => m.id === mapping.id ? mapping : m));
+            } else {
+              setRelationMappings([...relationMappings, { ...mapping, id: `rel-${Date.now()}` }]);
+            }
+            setShowAddMappingModal(false);
+            setEditingMapping(null);
           }}
         />
       )}
@@ -1615,29 +1638,35 @@ function AddMultiAccountModal({
 
 // Add Relation Mapping Modal Component - 表单关系配置模态框
 function AddRelationMappingModal({
+  mapping,
   onClose,
   onSave,
 }: {
+  mapping: AccountRelationMapping | null;
   onClose: () => void;
   onSave: (mapping: AccountRelationMapping) => void;
 }) {
-  const [mappingType, setMappingType] = useState<'submitter' | 'custom'>('submitter');
-  const [selectedForm, setSelectedForm] = useState('');
-  const [relatedForm, setRelatedForm] = useState('');
-  const [matchField, setMatchField] = useState('手机号');
+  const [mappingType, setMappingType] = useState<'submitter' | 'custom'>(mapping?.mappingType || 'submitter');
+  const [selectedForm, setSelectedForm] = useState(mapping?.formName || '');
+  const [relatedForm, setRelatedForm] = useState(mapping?.relatedForm || '');
+  const [matchField, setMatchField] = useState(mapping?.matchField || '手机号');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [uploadStep, setUploadStep] = useState<1 | 2>(1); // 1=上传文件, 2=预览确认
+  const [uploadStep, setUploadStep] = useState<1 | 2>(
+    mapping?.mappingType === 'custom' && mapping?.mappingData ? 2 : 1
+  ); // 1=上传文件, 2=预览确认
   // 默认模拟数据用于展示效果
   const [successData, setSuccessData] = useState<Array<{
     formField: string;
     fieldValue: string;
     internalUserName: string;
     internalUserPhone: string;
-  }>>([
-    { formField: '供应商类型', fieldValue: '一般供应商', internalUserName: '张伟', internalUserPhone: '13800138000' },
-    { formField: '供应商类型', fieldValue: '重点供应商', internalUserName: '李雷', internalUserPhone: '13900139000' },
-    { formField: '供应商级别', fieldValue: 'A级供应商', internalUserName: '王强', internalUserPhone: '13700137000' },
-  ]);
+  }>>(
+    mapping?.mappingData || [
+      { formField: '供应商类型', fieldValue: '一般供应商', internalUserName: '张伟', internalUserPhone: '13800138000' },
+      { formField: '供应商类型', fieldValue: '重点供应商', internalUserName: '李雷', internalUserPhone: '13900139000' },
+      { formField: '供应商级别', fieldValue: 'A级供应商', internalUserName: '王强', internalUserPhone: '13700137000' },
+    ]
+  );
   const [failedData, setFailedData] = useState<Array<{
     row: number;
     data: string;
@@ -1755,23 +1784,23 @@ function AddRelationMappingModal({
         return;
       }
       onSave({
-        id: '',
+        id: mapping?.id || '',
         formName: selectedForm,
         mappingType: 'submitter',
         relatedForm,
         matchField,
       });
     } else {
-      if (!uploadedFile || successData.length === 0) {
+      if (successData.length === 0) {
         alert('请上传映射配置文件并完成数据预览');
         return;
       }
       onSave({
-        id: '',
+        id: mapping?.id || '',
         formName: selectedForm,
         mappingType: 'custom',
-        mappingFile: uploadedFile,
-        mappingFileName: uploadedFile.name,
+        mappingFile: uploadedFile || mapping?.mappingFile,
+        mappingFileName: uploadedFile?.name || mapping?.mappingFileName || '',
         mappingData: successData,
         mappingDataCount: successData.length,
       });
@@ -1787,7 +1816,7 @@ function AddRelationMappingModal({
         {/* Header - 固定在顶部 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">新增表单关系配置</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{mapping ? '编辑表单关系配置' : '新增表单关系配置'}</h3>
             <p className="text-xs text-slate-600 mt-1">为指定外部表单配置业务人员对应关系</p>
           </div>
           <button
