@@ -61,6 +61,19 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
   const [syncType, setSyncType] = useState<'immediate' | 'scheduled' | 'afterDeadline'>('immediate');
   const [scheduledSyncTime, setScheduledSyncTime] = useState('');
 
+  // 同步链接
+  const [syncLinkEnabled, setSyncLinkEnabled] = useState(false);
+  const [syncLinkTypes, setSyncLinkTypes] = useState<string[]>([]);
+  const [syncQrCodeTypes, setSyncQrCodeTypes] = useState<string[]>([]);
+
+  const toggleSyncLinkType = (val: string) => {
+    setSyncLinkTypes(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  };
+
+  const toggleSyncQrCodeType = (val: string) => {
+    setSyncQrCodeTypes(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  };
+
   // 修改规则（改为多选）
   const [editRules, setEditRules] = useState<string[]>([]);
 
@@ -733,7 +746,74 @@ export function FormAdvancedSettings({ onClose, formName }: { onClose: () => voi
             </div>
           </section>
 
-          {/* 4. 修改规则 */}
+          {/* 4. 同步链接 - 仅在开启多流程表单限制时显示 */}
+          {multiFormMode && (
+          <section className="bg-white border border-slate-200 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-slate-900">同步链接</h2>
+              <button
+                onClick={() => setSyncLinkEnabled(!syncLinkEnabled)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  syncLinkEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    syncLinkEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">关联表单审核通过后，该表单链接同步到OA的审批意见中</p>
+
+            {syncLinkEnabled && (
+              <div className="pl-4 border-l-2 border-slate-200 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">链接类型</label>
+                  <div className="flex flex-wrap items-center gap-6">
+                    {[
+                      { value: 'miniprogram', label: '小程序链接' },
+                      { value: 'h5', label: 'H5链接' },
+                      { value: 'h5-to-miniprogram', label: 'H5跳转到小程序链接' },
+                    ].map(({ value, label }) => (
+                      <label key={value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={syncLinkTypes.includes(value)}
+                          onChange={() => toggleSyncLinkType(value)}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                        />
+                        <span className="text-sm text-slate-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">二维码类型</label>
+                  <div className="flex flex-wrap items-center gap-6">
+                    {[
+                      { value: 'miniprogram', label: '小程序二维码' },
+                      { value: 'h5', label: 'H5二维码' },
+                      { value: 'h5-to-miniprogram', label: 'H5跳转小程序二维码' },
+                    ].map(({ value, label }) => (
+                      <label key={value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={syncQrCodeTypes.includes(value)}
+                          onChange={() => toggleSyncQrCodeType(value)}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                        />
+                        <span className="text-sm text-slate-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+          )}
+
+          {/* 5. 修改规则 */}
           <section className="bg-white border border-slate-200 rounded-xl p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-6">修改规则</h2>
 
